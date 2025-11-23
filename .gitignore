@@ -1,2 +1,4 @@
-openstreetmap.code-workspace
+.venv/
 local-storage/
+openstreetmap.code-workspace
+*.wip
