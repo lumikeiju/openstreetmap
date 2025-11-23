@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<presets xmlns="http://josm.openstreetmap.de/tagging-preset-1.0">
+  <group name="Road Markings">
+    <!-- Node: Stop Line -->
+    <item name="00. Stop Line (Node)" type="node" icon="">
+      <label text="Stop Line Node" />
+      <key key="road_marking" value="stop_line" />
+      <combo key="stroke" text="Stroke Style" values="solid,dashed,double_solid,double_dashed,sharks_teeth,zigzag" display_values="Solid,Dashed,Double Solid,Double Dashed,Shark's Teeth,Zigzag" default="" editable="true">
+        <list_entry value="solid" icon="" />
+        <list_entry value="dashed" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="sharks_teeth" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="direction" text="Direction" values="forward,backward" display_values="Forward,Backward" default="" editable="false" />
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+    </item>
+    <!-- Way: Stop Line -->
+    <item name="01. Stop Line (Way)" type="way" icon="">
+      <label text="Stop Line Way" />
+      <key key="road_marking" value="stop_line" />
+      <combo key="stroke" text="Stroke Style" values="solid,dashed,double_solid,double_dashed,sharks_teeth,zigzag" display_values="Solid,Dashed,Double Solid,Double Dashed,Shark's Teeth,Zigzag" default="" editable="true">
+        <list_entry value="solid" icon="" />
+        <list_entry value="dashed" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="sharks_teeth" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+    </item>
+    <!-- Way: Lane Divider -->
+    <item name="02. Lane Divider (Way)" type="way" icon="">
+      <label text="Lane Divider Way" />
+      <key key="road_marking" value="lane_divider" />
+      <combo key="stroke" text="Stroke Style" values="dashed,solid,double_solid,double_dashed,zigzag" display_values="Dashed,Solid,Double Solid,Double Dashed,Zigzag" default="dashed" editable="true">
+        <list_entry value="dashed" icon="" />
+        <list_entry value="solid" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="stroke:left" text="Left Side Stroke" values="dashed,solid,double_solid,double_dashed,zigzag" display_values="Dashed,Solid,Double Solid,Double Dashed,Zigzag" default="" editable="true">
+        <list_entry value="dashed" icon="" />
+        <list_entry value="solid" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="stroke:right" text="Right Side Stroke" values="dashed,solid,double_solid,double_dashed,zigzag" display_values="Dashed,Solid,Double Solid,Double Dashed,Zigzag" default="" editable="true">
+        <list_entry value="dashed" icon="" />
+        <list_entry value="solid" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+    </item>
+    <!-- Way: Edge Line -->
+    <item name="03. Edge Line (Way)" type="way" icon="">
+      <label text="Edge Line Way" />
+      <key key="road_marking" value="edge_line" />
+      <combo key="stroke" text="Stroke Style" values="solid,dashed,double_solid,double_dashed,sharks_teeth,zigzag" display_values="Solid,Dashed,Double Solid,Double Dashed,Shark's Teeth,Zigzag" default="solid" editable="true">
+        <list_entry value="solid" icon="" />
+        <list_entry value="dashed" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="sharks_teeth" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+    </item>
+    <!-- Way: Crossing Edge -->
+    <item name="04. Crossing Edge (Way)" type="way" icon="">
+      <label text="Crossing Edge Way" />
+      <key key="road_marking" value="crossing_edge" />
+      <combo key="stroke" text="Stroke Style" values="solid,dashed,double_solid,double_dashed,zigzag" display_values="Solid,Dashed,Double Solid,Double Dashed,Zigzag" default="" editable="true">
+        <list_entry value="solid" icon="" />
+        <list_entry value="dashed" icon="" />
+        <list_entry value="double_solid" icon="" />
+        <list_entry value="double_dashed" icon="" />
+        <list_entry value="zigzag" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+    </item>
+    <!-- Area: Restriction -->
+    <item name="05. Restriction Area (Neutral/Gore)" type="area" icon="">
+      <label text="Restriction Area - Neutral Zone/Gore Chevron" />
+      <key key="road_marking" value="restriction" />
+      <combo key="pattern" text="Pattern Style" values="stripes,crosshatch,chevron,zigzag,chessboard,solid" display_values="Stripes,Crosshatch,Chevron,Zigzag,Checkerboard,Solid" default="stripes" editable="true">
+        <list_entry value="stripes" icon="" />
+        <list_entry value="crosshatch" icon="" />
+        <list_entry value="chevron" icon="" />
+        <list_entry value="zigzag" icon="" />
+        <list_entry value="chessboard" icon="" />
+        <list_entry value="solid" icon="" />
+      </combo>
+      <combo key="reason" text="Restriction Reason" values="gore,driveway,bus_stop,emergency,loading,junction" display_values="Gore,Driveway,Bus Stop,Emergency,Loading,Junction" default="" editable="true" />
+      <combo key="road_marking:colour" text="Colour" values="white,yellow" display_values="White,Yellow" default="white" editable="true" />
+    </item>
+    <!-- Area: Crossing -->
+    <item name="06. Crossing Area (Pedestrian/Cycleway)" type="area" icon="">
+      <label text="Crossing Area - Pedestrian/Cycleway" />
+      <key key="road_marking" value="crossing" />
+      <combo key="pattern" text="Pattern Style" values="solid,zebra,chevron,crosshatch" display_values="Solid,Zebra,Chevron,Crosshatch" default="solid" editable="true">
+        <list_entry value="solid" icon="" />
+        <list_entry value="zebra" icon="" />
+        <list_entry value="chevron" icon="" />
+        <list_entry value="crosshatch" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,red,blue,green,yellow" display_values="White,Red,Blue,Green,Yellow" default="white" editable="true" />
+    </item>
+    <!-- Way: Arrow Left -->
+    <item name="07. Arrow Left (Way)" type="way" icon="">
+      <label text="Arrow Marking - Left Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="left" />
+    </item>
+    <!-- Way: Arrow Right -->
+    <item name="08. Arrow Right (Way)" type="way" icon="">
+      <label text="Arrow Marking - Right Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="right" />
+    </item>
+    <!-- Way: Arrow Through -->
+    <item name="09. Arrow Through (Way)" type="way" icon="">
+      <label text="Arrow Marking - Through" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="through" />
+    </item>
+    <!-- Way: Arrow Through/Right -->
+    <item name="10. Arrow Through/Right (Way)" type="way" icon="">
+      <label text="Arrow Marking - Through/Right" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="through;right" />
+    </item>
+    <!-- Way: Arrow Through/Left -->
+    <item name="11. Arrow Through/Left (Way)" type="way" icon="">
+      <label text="Arrow Marking - Through/Left" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="through;left" />
+    </item>
+    <!-- Way: Arrow U-Turn -->
+    <item name="12. Arrow U-Turn (Way)" type="way" icon="">
+      <label text="Arrow Marking - U-Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="reverse" />
+    </item>
+    <!-- Way: Arrow Merge Left -->
+    <item name="13. Arrow Merge Left (Way)" type="way" icon="">
+      <label text="Arrow Marking - Merge Left" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="merge_to_left" />
+    </item>
+    <!-- Way: Arrow Merge Right -->
+    <item name="14. Arrow Merge Right (Way)" type="way" icon="">
+      <label text="Arrow Marking - Merge Right" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="merge_to_right" />
+    </item>
+    <!-- Way: Arrow No U-Turn -->
+    <item name="15. Arrow No U-Turn (Way)" type="way" icon="">
+      <label text="Arrow Marking - No U-Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="no_u_turn" />
+    </item>
+    <!-- Way: Arrow No Left Turn -->
+    <item name="16. Arrow No Left Turn (Way)" type="way" icon="">
+      <label text="Arrow Marking - No Left Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="no_left_turn" />
+    </item>
+    <!-- Way: Arrow No Right Turn -->
+    <item name="17. Arrow No Right Turn (Way)" type="way" icon="">
+      <label text="Arrow Marking - No Right Turn" />
+      <key key="road_marking" value="arrow" />
+      <key key="arrow" value="no_right_turn" />
+    </item>
+    <!-- Way: Arrow Custom -->
+    <item name="18. Arrow Custom (Way)" type="way" icon="">
+      <label text="Arrow Marking - Custom" />
+      <key key="road_marking" value="arrow" />
+      <text key="arrow" text="Arrow Type (custom value)" default="" />
+    </item>
+    <!-- Node: Traffic Sign Marking -->
+    <item name="19. Traffic Sign Marking (Node)" type="node" icon="">
+      <label text="Traffic Sign Marking Node" />
+      <key key="road_marking" value="traffic_sign" />
+      <text key="traffic_sign" text="Traffic Sign Code" default="" />
+      <combo key="road_marking:colour" text="Colour" values="white,yellow,red,blue" display_values="White,Yellow,Red,Blue" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+      <text key="length" text="Length (m)" default="" />
+    </item>
+    <!-- Node: Text Marking -->
+    <item name="20. Text Marking (Node)" type="node" icon="">
+      <label text="Text Marking Node" />
+      <key key="road_marking" value="text" />
+      <text key="inscription" text="Text/Inscription" default="" />
+      <combo key="road_marking:colour" text="Colour" values="white,yellow,red,blue" display_values="White,Yellow,Red,Blue" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+      <text key="length" text="Length (m)" default="" />
+    </item>
+    <!-- Node: Symbol Marking -->
+    <item name="21. Symbol Marking (Node)" type="node" icon="">
+      <label text="Symbol Marking Node" />
+      <key key="road_marking" value="symbol" />
+      <combo key="symbol" text="Symbol Type" values="bicycle,pedestrian,wheelchair,hov,ambulance,bus,taxi,car,motorcycle,horse,airport" display_values="Bicycle,Pedestrian,Wheelchair,HOV,Ambulance,Bus,Taxi,Car,Motorcycle,Horse,Airport" default="" editable="true">
+        <list_entry value="bicycle" icon="" />
+        <list_entry value="pedestrian" icon="" />
+        <list_entry value="wheelchair" icon="" />
+        <list_entry value="hov" icon="" />
+        <list_entry value="ambulance" icon="" />
+        <list_entry value="bus" icon="" />
+        <list_entry value="taxi" icon="" />
+        <list_entry value="car" icon="" />
+        <list_entry value="motorcycle" icon="" />
+        <list_entry value="horse" icon="" />
+        <list_entry value="airport" icon="" />
+      </combo>
+      <combo key="road_marking:colour" text="Colour" values="white,yellow,red,blue" display_values="White,Yellow,Red,Blue" default="white" editable="true" />
+      <text key="width" text="Width (m)" default="" />
+      <text key="length" text="Length (m)" default="" />
+    </item>
+    <!-- Generic Road Marking for customization -->
+    <item name="22. Road Marking (Generic)" type="node,way,area" icon="">
+      <label text="Road Marking - Generic/Custom" />
+      <text key="road_marking" text="Road Marking Type" default="" />
+      <text key="description" text="Description" default="" />
+    </item>
+  </group>
+</presets>
