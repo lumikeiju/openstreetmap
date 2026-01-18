@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<presets xmlns="http://josm.openstreetmap.de/tagging-preset-1.0">
+  <group name="Seattle City Light Pole">
+    <!-- Node: Seattle City Light Pole -->
+    <item name="01. Seattle City Light Pole" type="node">
+      <label text="Seattle City Light Pole Node" />
+      <combo key="light:direction" text="Light Direction (0-359)" values="0,90,180,270,N,S,E,W" />
+      <combo key="light_source" text="Light Source" values="lantern" default="lantern" />
+      <combo key="light:count" text="Light Count" values="1,2,3,4" default="1" />
+      <combo key="light:method" text="Light Method" values="electric,led,incandescent,discharge,fluorescent,gas" />
+      <combo key="light:shape" text="Light Shape" values="directed,spherical,cylindrical" default="directed" />
+      <combo key="light:tilt" text="Light Tilt (-90-90)" values="-90,-45,0,45,90" />
+      <combo key="light:lit" text="Light Operation Time" values="dusk-dawn,24/7" />
+      <combo key="light:colour" text="Light Color" values="3000 K,4000 K,amber,daylight,warmwhite,softwhite,neutralwhite,brightwhite,coolwhite,coldwhite" />
+      <combo key="light:mount" text="Light Mount" values="bent_mast,straight_mast,wall" />
+      <combo key="light:support" text="Light Support" values="pole,wire,wall,ground" default="pole" />
+      <text key="light:height" text="Light Height" />
+      <combo key="material" text="Pole Material" values="wood,metal" />
+      <combo key="colour" text="Pole Color" values="brown,silver,black" />
+      <check key="highway" text="Street Lamp" value_on="street_lamp" disable_off="true" default="on" />
+      <check key="man_made" text="Utility Pole" value_on="utility_pole" disable_off="true" default="on" />
+      <combo key="utility" text="Utility Type" values="street_lighting,power,power;street_lighting" default="street_lighting" />
+      <check key="power" text="Power Pole" value_on="pole" disable_off="true" />
+      <text key="ref" text="ref" default="" />
+      <text key="ref:US-WA:SCL:ASSET_ID" text="SCL Asset ID" />
+      <text key="height" text="Pole Height" default="" />
+      <combo key="operator" text="Operator" values="Seattle City Light,Puget Sound Energy" default="Seattle City Light" />
+      <combo key="operator:wikidata" text="Operator (Wikidata)" values="Q7442080,Q7258927" default="Q7442080" />
+      <combo key="operator:short" text="Operator (Short)" values="SCL,PSE" default="SCL" />
+    </item>
+  </group>
+</presets>
