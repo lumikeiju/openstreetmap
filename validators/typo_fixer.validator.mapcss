@@ -1,16 +1,23 @@
 meta
 {
-	title: "Typo Fixer";
-	version: "1.0_2025-04-06";
-	description: "Validator rules suggesting typo fixes";
-	author: "Lumikeiju";
-	link: "https://github.com/Lumikeiju/openstreetmap/blob/main/validators/typo_fixer.validator.mapcss";
-	baselanguage: "en";
-	min-josm-version: 19369;
+    title: "Typo Fixer";
+    version: "1.1_2026-06-15";
+    description: "Validator rules suggesting typo fixes";
+    author: "Lumikeiju";
+    link: "https://github.com/Lumikeiju/openstreetmap/blob/main/validators/typo_fixer.validator.mapcss";
+    baselanguage: "en";
+    min-josm-version: 19369;
 }
 
 *["healthcare:specialty"] {
-	throwError: "Change healthcare:specialty to healthcare:speciality?";
-	fixChangeKey: "healthcare:specialty=>healthcare:speciality";
-	group: "Typo Fixer";
+    throwError: "Change healthcare:specialty to healthcare:speciality?";
+    fixChangeKey: "healthcare:specialty=>healthcare:speciality";
+    group: "Typo Fixer";
+}
+
+*[/.*/ = "seperate"] {
+    throwError: "Change value '{0.value}' to 'separate' for key '{0.key}'?";
+    fixRemove: "{0.key}";
+    fixAdd: "{0.key}=separate";
+    group: "Typo Fixer";
 }
