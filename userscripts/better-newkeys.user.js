@@ -13,754 +13,710 @@
 // ==/UserScript==
 
 (function () {
-    "use strict";
+  "use strict";
 
-    const DEFAULT_SERVER = "https://overpass-api.de";
-    const STORAGE_KEY = "overpass-server";
-    const THEME_STORAGE_KEY = "theme";
-    const MONOSPACE_STORAGE_KEY = "monospace";
-    const ADDRESSED_KEYS_STORAGE_KEY = "addressed-keys";
-    const LIGHT_THEME = "light";
-    const DARK_THEME = "dark";
-    const DEFAULT_MONOSPACE = true;
-    const NEXT_FONT = "atkinson-hyperlegible-next";
-    const MONOSPACE_FONT = "atkinson-hyperlegible-mono";
-    const ORIGINAL_HREF_ATTRIBUTE = "data-better-newkeys-original-href";
-    const ORIGINAL_OVERPASS_HOST = "overpass-api.de";
-    const CONTROL_ID = "better-newkeys-overpass-server";
-    const THEME_TOGGLE_ID = "better-newkeys-theme-toggle";
-    const MONOSPACE_TOGGLE_ID = "better-newkeys-monospace-toggle";
-    const ADDRESSED_COLUMN_CLASS = "better-newkeys-addressed-column";
-    const CREDITS_ID = "better-newkeys-credits";
-    const LEVEL0_HOST = "level0.osmz.ru";
-    const LEVEL0_SUPPORTED_ENDPOINTS = [
-        /^overpass\.osm\.rambler\.ru\/cgi\/interpreter$/i,
-        /^overpass-api\.de\/api\/interpreter$/i,
-        /^api\.openstreetmap\.fr\/oapi\/interpreter$/i,
-        /^overpass\.openstreetmap\.ie\/api\/interpreter$/i,
-        /^dev\.overpass-api\.de\/[a-z0-9_]+\/interpreter$/i,
-        /^overpass\.private\.coffee\/api\/interpreter$/i,
-        /^overpass\.osm\.jp\/api\/interpreter$/i,
-        /^maps\.mail\.ru\/osm\/tools\/overpass\/api\/interpreter$/i,
-    ];
+  const DEFAULT_SERVER = "https://overpass-api.de";
+  const STORAGE_KEY = "overpass-server";
+  const THEME_STORAGE_KEY = "theme";
+  const MONOSPACE_STORAGE_KEY = "monospace";
+  const ADDRESSED_KEYS_STORAGE_KEY = "addressed-keys";
+  const LIGHT_THEME = "light";
+  const DARK_THEME = "dark";
+  const DEFAULT_MONOSPACE = true;
+  const NEXT_FONT = "atkinson-hyperlegible-next";
+  const MONOSPACE_FONT = "atkinson-hyperlegible-mono";
+  const ORIGINAL_HREF_ATTRIBUTE = "data-better-newkeys-original-href";
+  const ORIGINAL_OVERPASS_HOST = "overpass-api.de";
+  const CONTROL_ID = "better-newkeys-overpass-server";
+  const THEME_TOGGLE_ID = "better-newkeys-theme-toggle";
+  const MONOSPACE_TOGGLE_ID = "better-newkeys-monospace-toggle";
+  const ADDRESSED_COLUMN_CLASS = "better-newkeys-addressed-column";
+  const CREDITS_ID = "better-newkeys-credits";
+  const LEVEL0_HOST = "level0.osmz.ru";
+  const LEVEL0_SUPPORTED_ENDPOINTS = [
+    /^overpass\.osm\.rambler\.ru\/cgi\/interpreter$/i,
+    /^overpass-api\.de\/api\/interpreter$/i,
+    /^api\.openstreetmap\.fr\/oapi\/interpreter$/i,
+    /^overpass\.openstreetmap\.ie\/api\/interpreter$/i,
+    /^dev\.overpass-api\.de\/[a-z0-9_]+\/interpreter$/i,
+    /^overpass\.private\.coffee\/api\/interpreter$/i,
+    /^overpass\.osm\.jp\/api\/interpreter$/i,
+    /^maps\.mail\.ru\/osm\/tools\/overpass\/api\/interpreter$/i,
+  ];
 
-    function isHttpUrl(url) {
-        return url.protocol === "http:" || url.protocol === "https:";
+  function isHttpUrl(url) {
+    return url.protocol === "http:" || url.protocol === "https:";
+  }
+
+  function normalizeServer(value) {
+    const server = value.trim();
+    const serverUrl = new URL(server);
+
+    if (!isHttpUrl(serverUrl)) {
+      throw new TypeError("The Overpass server must use HTTP or HTTPS.");
     }
 
-    function normalizeServer(value) {
-        const server = value.trim();
-        const serverUrl = new URL(server);
+    return server;
+  }
 
-        if (!isHttpUrl(serverUrl)) {
-            throw new TypeError("The Overpass server must use HTTP or HTTPS.");
+  function joinSearchParameters(serverSearch, endpointSearch) {
+    if (!serverSearch) {
+      return endpointSearch;
+    }
+
+    if (!endpointSearch) {
+      return serverSearch;
+    }
+
+    return `${serverSearch}&${endpointSearch.substring(1)}`;
+  }
+
+  function createServerEndpoint(server, originalEndpoint) {
+    const serverUrl = new URL(server);
+    const endpointUrl = new URL(originalEndpoint);
+    const serverPath = serverUrl.pathname.replace(/\/+$/, "");
+    const endpointPath = endpointUrl.pathname.replace(/^\/api(?=\/|$)/i, "");
+    const serverIncludesApi = /\/api$/i.test(serverPath);
+
+    serverUrl.pathname = serverIncludesApi
+      ? `${serverPath}${endpointPath}`
+      : `${serverPath}${endpointUrl.pathname}`;
+    serverUrl.search = joinSearchParameters(
+      serverUrl.search,
+      endpointUrl.search
+    );
+    serverUrl.hash = serverUrl.hash || endpointUrl.hash;
+
+    return serverUrl.href;
+  }
+
+  function isOriginalOverpassEndpoint(url) {
+    return (
+      isHttpUrl(url) && url.hostname.toLowerCase() === ORIGINAL_OVERPASS_HOST
+    );
+  }
+
+  function getEmbeddedOverpassEndpoint(originalHref) {
+    const linkUrl = new URL(originalHref, document.baseURI);
+    const embeddedEndpoint = linkUrl.searchParams.get("url");
+
+    if (!embeddedEndpoint) {
+      return null;
+    }
+
+    const endpointUrl = new URL(embeddedEndpoint);
+
+    return isOriginalOverpassEndpoint(endpointUrl) ? endpointUrl : null;
+  }
+
+  function isJosmImportLink(linkUrl) {
+    return (
+      isHttpUrl(linkUrl) &&
+      linkUrl.port === "8111" &&
+      linkUrl.pathname === "/import" &&
+      ["localhost", "127.0.0.1", "[::1]"].includes(linkUrl.hostname)
+    );
+  }
+
+  function isLevel0Link(linkUrl) {
+    return isHttpUrl(linkUrl) && linkUrl.hostname === LEVEL0_HOST;
+  }
+
+  function isLevel0CompatibleEndpoint(endpointUrl) {
+    const hostAndPath = `${endpointUrl.hostname}${endpointUrl.pathname}`;
+
+    return LEVEL0_SUPPORTED_ENDPOINTS.some((pattern) =>
+      pattern.test(hostAndPath)
+    );
+  }
+
+  function createJosmImportHref(endpointUrl) {
+    const josmUrl = new URL("http://localhost:8111/import");
+
+    josmUrl.searchParams.set("url", endpointUrl.href);
+
+    return josmUrl.href;
+  }
+
+  function getRewrittenHref(originalHref, server) {
+    const linkUrl = new URL(originalHref, document.baseURI);
+    const embeddedEndpoint = getEmbeddedOverpassEndpoint(originalHref);
+
+    if (embeddedEndpoint && isHttpUrl(linkUrl)) {
+      linkUrl.searchParams.set(
+        "url",
+        createServerEndpoint(server, embeddedEndpoint.href)
+      );
+      return linkUrl.href;
+    }
+
+    if (!isOriginalOverpassEndpoint(linkUrl)) {
+      return null;
+    }
+
+    return createServerEndpoint(server, linkUrl.href);
+  }
+
+  function getJosmImportHref(editorCell, server) {
+    for (const link of editorCell.querySelectorAll("a")) {
+      const originalHref =
+        link.getAttribute(ORIGINAL_HREF_ATTRIBUTE) ?? link.getAttribute("href");
+
+      if (!originalHref) {
+        continue;
+      }
+
+      try {
+        const endpointUrl = getEmbeddedOverpassEndpoint(originalHref);
+
+        if (endpointUrl) {
+          return createJosmImportHref(
+            new URL(createServerEndpoint(server, endpointUrl.href))
+          );
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
+  function getEditorColumnIndex(table) {
+    const headerRow = table.querySelector("tr");
+
+    if (!headerRow) {
+      return -1;
+    }
+
+    return Array.from(headerRow.cells).findIndex(
+      (cell) => cell.textContent.trim() === "Editor"
+    );
+  }
+
+  function rewriteEditorLinks(editorSurface, server) {
+    const editorColumnIndex = getEditorColumnIndex(editorSurface);
+
+    if (editorColumnIndex === -1) {
+      return { rewrittenLinkCount: 0, skippedLevel0LinkCount: 0 };
+    }
+
+    let rewrittenLinkCount = 0;
+    let skippedLevel0LinkCount = 0;
+
+    editorSurface.querySelectorAll("tr").forEach((row) => {
+      const editorCell = row.cells[editorColumnIndex];
+
+      if (!editorCell) {
+        return;
+      }
+
+      editorCell.querySelectorAll("a").forEach((link) => {
+        const editorOption = link.textContent.trim();
+        const editorOptionMatch = editorOption.match(/^\(([^()]+)\)$/);
+        const originalHref =
+          link.getAttribute(ORIGINAL_HREF_ATTRIBUTE) ??
+          link.getAttribute("href");
+
+        if (editorOptionMatch) {
+          link.textContent = editorOptionMatch[1];
         }
 
-        return server;
-    }
-
-    function joinSearchParameters(serverSearch, endpointSearch) {
-        if (!serverSearch) {
-            return endpointSearch;
+        if (!originalHref) {
+          return;
         }
 
-        if (!endpointSearch) {
-            return serverSearch;
+        try {
+          const linkUrl = new URL(originalHref, document.baseURI);
+          const embeddedEndpoint = getEmbeddedOverpassEndpoint(originalHref);
+
+          if (
+            isLevel0Link(linkUrl) &&
+            embeddedEndpoint &&
+            !isLevel0CompatibleEndpoint(
+              new URL(createServerEndpoint(server, embeddedEndpoint.href))
+            )
+          ) {
+            link.setAttribute(ORIGINAL_HREF_ATTRIBUTE, originalHref);
+            link.setAttribute("href", originalHref);
+            skippedLevel0LinkCount += 1;
+            return;
+          }
+
+          const rewrittenHref = isJosmImportLink(linkUrl)
+            ? getJosmImportHref(editorCell, server)
+            : getRewrittenHref(originalHref, server);
+
+          if (!rewrittenHref) {
+            return;
+          }
+
+          link.setAttribute(ORIGINAL_HREF_ATTRIBUTE, originalHref);
+          link.setAttribute("href", rewrittenHref);
+          rewrittenLinkCount += 1;
+        } catch {
+          return;
         }
+      });
+    });
 
-        return `${serverSearch}&${endpointSearch.substring(1)}`;
-    }
+    return { rewrittenLinkCount, skippedLevel0LinkCount };
+  }
 
-    function createServerEndpoint(server, originalEndpoint) {
-        const serverUrl = new URL(server);
-        const endpointUrl = new URL(originalEndpoint);
-        const serverPath = serverUrl.pathname.replace(/\/+$/, "");
-        const endpointPath = endpointUrl.pathname.replace(
-            /^\/api(?=\/|$)/i,
-            ""
-        );
-        const serverIncludesApi = /\/api$/i.test(serverPath);
+  function addServerControl(
+    editorSurface,
+    savedServer,
+    savedTheme,
+    savedMonospace,
+    insertionPoint
+  ) {
+    const form = document.createElement("form");
+    const label = document.createElement("label");
+    const input = document.createElement("input");
+    const saveButton = document.createElement("button");
+    const appearanceToggles = document.createElement("div");
+    const themeLabel = document.createElement("label");
+    const themeToggle = document.createElement("input");
+    const themeText = document.createElement("span");
+    const monospaceLabel = document.createElement("label");
+    const monospaceToggle = document.createElement("input");
+    const monospaceText = document.createElement("span");
+    const status = document.createElement("output");
 
-        serverUrl.pathname = serverIncludesApi
-            ? `${serverPath}${endpointPath}`
-            : `${serverPath}${endpointUrl.pathname}`;
-        serverUrl.search = joinSearchParameters(
-            serverUrl.search,
-            endpointUrl.search
-        );
-        serverUrl.hash = serverUrl.hash || endpointUrl.hash;
+    form.id = CONTROL_ID;
 
-        return serverUrl.href;
-    }
+    label.htmlFor = "better-newkeys-overpass-server-input";
+    label.textContent = "Overpass Server";
 
-    function isOriginalOverpassEndpoint(url) {
-        return (
-            isHttpUrl(url) &&
-            url.hostname.toLowerCase() === ORIGINAL_OVERPASS_HOST
-        );
-    }
+    input.id = "better-newkeys-overpass-server-input";
+    input.type = "text";
+    input.value = savedServer;
+    input.autocomplete = "url";
+    input.inputMode = "url";
+    input.placeholder = "https://overpass.example/api/";
+    input.spellcheck = false;
 
-    function getEmbeddedOverpassEndpoint(originalHref) {
-        const linkUrl = new URL(originalHref, document.baseURI);
-        const embeddedEndpoint = linkUrl.searchParams.get("url");
+    saveButton.type = "submit";
+    saveButton.textContent = "Save";
 
-        if (!embeddedEndpoint) {
-            return null;
-        }
+    appearanceToggles.className = "better-newkeys-appearance-toggles";
 
-        const endpointUrl = new URL(embeddedEndpoint);
+    themeLabel.className = "better-newkeys-appearance-toggle";
+    themeLabel.htmlFor = THEME_TOGGLE_ID;
 
-        return isOriginalOverpassEndpoint(endpointUrl) ? endpointUrl : null;
-    }
+    themeToggle.id = THEME_TOGGLE_ID;
+    themeToggle.type = "checkbox";
+    themeToggle.checked = savedTheme === DARK_THEME;
+    themeToggle.setAttribute("role", "switch");
+    themeToggle.setAttribute("aria-checked", String(themeToggle.checked));
 
-    function isJosmImportLink(linkUrl) {
-        return (
-            isHttpUrl(linkUrl) &&
-            linkUrl.port === "8111" &&
-            linkUrl.pathname === "/import" &&
-            ["localhost", "127.0.0.1", "[::1]"].includes(linkUrl.hostname)
-        );
-    }
+    themeText.textContent = "Dark mode";
+    themeLabel.append(themeToggle, themeText);
 
-    function isLevel0Link(linkUrl) {
-        return isHttpUrl(linkUrl) && linkUrl.hostname === LEVEL0_HOST;
-    }
+    monospaceLabel.className = "better-newkeys-appearance-toggle";
+    monospaceLabel.htmlFor = MONOSPACE_TOGGLE_ID;
 
-    function isLevel0CompatibleEndpoint(endpointUrl) {
-        const hostAndPath = `${endpointUrl.hostname}${endpointUrl.pathname}`;
+    monospaceToggle.id = MONOSPACE_TOGGLE_ID;
+    monospaceToggle.type = "checkbox";
+    monospaceToggle.checked = savedMonospace;
+    monospaceToggle.setAttribute("role", "switch");
+    monospaceToggle.setAttribute(
+      "aria-checked",
+      String(monospaceToggle.checked)
+    );
 
-        return LEVEL0_SUPPORTED_ENDPOINTS.some((pattern) =>
-            pattern.test(hostAndPath)
-        );
-    }
+    monospaceText.textContent = "Monospace";
+    monospaceLabel.append(monospaceToggle, monospaceText);
 
-    function createJosmImportHref(endpointUrl) {
-        const josmUrl = new URL("http://localhost:8111/import");
+    appearanceToggles.append(themeLabel, monospaceLabel);
 
-        josmUrl.searchParams.set("url", endpointUrl.href);
+    status.className = "better-newkeys-status";
+    status.setAttribute("aria-live", "polite");
 
-        return josmUrl.href;
-    }
+    form.append(label, input, saveButton, appearanceToggles, status);
+    insertionPoint.parentNode.insertBefore(form, insertionPoint);
 
-    function getRewrittenHref(originalHref, server) {
-        const linkUrl = new URL(originalHref, document.baseURI);
-        const embeddedEndpoint = getEmbeddedOverpassEndpoint(originalHref);
+    input.addEventListener("input", () => {
+      input.setCustomValidity("");
+      status.textContent = "";
+    });
 
-        if (embeddedEndpoint && isHttpUrl(linkUrl)) {
-            linkUrl.searchParams.set(
-                "url",
-                createServerEndpoint(server, embeddedEndpoint.href)
-            );
-            return linkUrl.href;
-        }
+    themeToggle.addEventListener("change", () => {
+      const theme = themeToggle.checked ? DARK_THEME : LIGHT_THEME;
 
-        if (!isOriginalOverpassEndpoint(linkUrl)) {
-            return null;
-        }
+      applyTheme(theme);
+      themeToggle.setAttribute("aria-checked", String(themeToggle.checked));
+      GM_setValue(THEME_STORAGE_KEY, theme);
+    });
 
-        return createServerEndpoint(server, linkUrl.href);
-    }
+    monospaceToggle.addEventListener("change", () => {
+      const monospace = monospaceToggle.checked;
 
-    function getJosmImportHref(editorCell, server) {
-        for (const link of editorCell.querySelectorAll("a")) {
-            const originalHref =
-                link.getAttribute(ORIGINAL_HREF_ATTRIBUTE) ??
-                link.getAttribute("href");
+      applyTableFont(monospace);
+      monospaceToggle.setAttribute(
+        "aria-checked",
+        String(monospaceToggle.checked)
+      );
+      GM_setValue(MONOSPACE_STORAGE_KEY, monospace);
+    });
 
-            if (!originalHref) {
-                continue;
-            }
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
 
-            try {
-                const endpointUrl = getEmbeddedOverpassEndpoint(originalHref);
+      let server;
 
-                if (endpointUrl) {
-                    return createJosmImportHref(
-                        new URL(createServerEndpoint(server, endpointUrl.href))
-                    );
-                }
-            } catch {
-                continue;
-            }
-        }
+      try {
+        server = normalizeServer(input.value);
+      } catch {
+        input.setCustomValidity("Enter a valid HTTP or HTTPS URL.");
+        input.reportValidity();
+        return;
+      }
 
-        return null;
-    }
-
-    function getEditorColumnIndex(table) {
-        const headerRow = table.querySelector("tr");
-
-        if (!headerRow) {
-            return -1;
-        }
-
-        return Array.from(headerRow.cells).findIndex(
-            (cell) => cell.textContent.trim() === "Editor"
-        );
-    }
-
-    function rewriteEditorLinks(editorSurface, server) {
-        const editorColumnIndex = getEditorColumnIndex(editorSurface);
-
-        if (editorColumnIndex === -1) {
-            return { rewrittenLinkCount: 0, skippedLevel0LinkCount: 0 };
-        }
-
-        let rewrittenLinkCount = 0;
-        let skippedLevel0LinkCount = 0;
-
-        editorSurface.querySelectorAll("tr").forEach((row) => {
-            const editorCell = row.cells[editorColumnIndex];
-
-            if (!editorCell) {
-                return;
-            }
-
-            editorCell.querySelectorAll("a").forEach((link) => {
-                const editorOption = link.textContent.trim();
-                const editorOptionMatch = editorOption.match(/^\(([^()]+)\)$/);
-                const originalHref =
-                    link.getAttribute(ORIGINAL_HREF_ATTRIBUTE) ??
-                    link.getAttribute("href");
-
-                if (editorOptionMatch) {
-                    link.textContent = editorOptionMatch[1];
-                }
-
-                if (!originalHref) {
-                    return;
-                }
-
-                try {
-                    const linkUrl = new URL(originalHref, document.baseURI);
-                    const embeddedEndpoint =
-                        getEmbeddedOverpassEndpoint(originalHref);
-
-                    if (
-                        isLevel0Link(linkUrl) &&
-                        embeddedEndpoint &&
-                        !isLevel0CompatibleEndpoint(
-                            new URL(
-                                createServerEndpoint(
-                                    server,
-                                    embeddedEndpoint.href
-                                )
-                            )
-                        )
-                    ) {
-                        link.setAttribute(
-                            ORIGINAL_HREF_ATTRIBUTE,
-                            originalHref
-                        );
-                        link.setAttribute("href", originalHref);
-                        skippedLevel0LinkCount += 1;
-                        return;
-                    }
-
-                    const rewrittenHref = isJosmImportLink(linkUrl)
-                        ? getJosmImportHref(editorCell, server)
-                        : getRewrittenHref(originalHref, server);
-
-                    if (!rewrittenHref) {
-                        return;
-                    }
-
-                    link.setAttribute(ORIGINAL_HREF_ATTRIBUTE, originalHref);
-                    link.setAttribute("href", rewrittenHref);
-                    rewrittenLinkCount += 1;
-                } catch {
-                    return;
-                }
-            });
-        });
-
-        return { rewrittenLinkCount, skippedLevel0LinkCount };
-    }
-
-    function addServerControl(
+      input.setCustomValidity("");
+      input.value = server;
+      GM_setValue(STORAGE_KEY, server);
+      const { rewrittenLinkCount, skippedLevel0LinkCount } = rewriteEditorLinks(
         editorSurface,
-        savedServer,
-        savedTheme,
-        savedMonospace,
-        insertionPoint
+        server
+      );
+      status.textContent = `Saved. ${rewrittenLinkCount} editor links updated.${skippedLevel0LinkCount ? ` Level0 keeps its original server because it cannot load this endpoint.` : ""}`;
+    });
+  }
+
+  function getSavedServer() {
+    try {
+      return normalizeServer(GM_getValue(STORAGE_KEY, DEFAULT_SERVER));
+    } catch {
+      return DEFAULT_SERVER;
+    }
+  }
+
+  function getSavedTheme() {
+    try {
+      return GM_getValue(THEME_STORAGE_KEY, DARK_THEME) === DARK_THEME
+        ? DARK_THEME
+        : LIGHT_THEME;
+    } catch {
+      return DARK_THEME;
+    }
+  }
+
+  function getSavedMonospace() {
+    try {
+      return GM_getValue(MONOSPACE_STORAGE_KEY, DEFAULT_MONOSPACE) === true;
+    } catch {
+      return DEFAULT_MONOSPACE;
+    }
+  }
+
+  function applyTheme(theme) {
+    document.documentElement.dataset.betterNewkeysTheme = theme;
+  }
+
+  function applyTableFont(monospace) {
+    document.documentElement.dataset.betterNewkeysTableFont = monospace
+      ? MONOSPACE_FONT
+      : NEXT_FONT;
+  }
+
+  function getAddressedKeys() {
+    try {
+      const addressedKeys = GM_getValue(ADDRESSED_KEYS_STORAGE_KEY, []);
+
+      return new Set(
+        Array.isArray(addressedKeys)
+          ? addressedKeys.filter(
+              (addressedKey) => typeof addressedKey === "string"
+            )
+          : []
+      );
+    } catch {
+      return new Set();
+    }
+  }
+
+  function saveAddressedKeys(addressedKeys) {
+    GM_setValue(ADDRESSED_KEYS_STORAGE_KEY, Array.from(addressedKeys).sort());
+  }
+
+  function addAddressedCheckboxes(table, addressedKeys) {
+    const headerRow = table.tHead?.rows[0];
+    const tableBody = table.tBodies[0];
+
+    if (!headerRow || !tableBody) {
+      return;
+    }
+
+    const headerCell = document.createElement("th");
+
+    headerCell.className = ADDRESSED_COLUMN_CLASS;
+    headerCell.scope = "col";
+    headerCell.title = "Addressed";
+    headerCell.setAttribute("aria-label", "Addressed");
+    headerRow.insertBefore(headerCell, headerRow.firstChild);
+
+    Array.from(tableBody.rows).forEach((row) => {
+      const keyCell = row.cells[0];
+      const key = keyCell?.textContent.trim();
+
+      if (!key) {
+        return;
+      }
+
+      const cell = document.createElement("td");
+      const checkbox = document.createElement("input");
+
+      cell.className = ADDRESSED_COLUMN_CLASS;
+      checkbox.type = "checkbox";
+      checkbox.checked = addressedKeys.has(key);
+      checkbox.setAttribute("aria-label", `Mark ${key} as addressed`);
+
+      if (!keyCell.title) {
+        keyCell.title = key;
+      }
+
+      cell.append(checkbox);
+      row.insertBefore(cell, row.firstChild);
+
+      checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+          addressedKeys.add(key);
+        } else {
+          addressedKeys.delete(key);
+        }
+
+        saveAddressedKeys(addressedKeys);
+      });
+    });
+  }
+
+  function fixTableHeaders(table) {
+    const headerRow = table.tHead?.rows[0];
+
+    if (!headerRow) {
+      return;
+    }
+
+    const expandedLabels = new Map([
+      ["FirstSeen", "First Seen"],
+      ["LastSeen", "Last Seen"],
+    ]);
+
+    Array.from(headerRow.cells).forEach((headerCell) => {
+      const expandedLabel = expandedLabels.get(headerCell.textContent.trim());
+
+      if (expandedLabel) {
+        headerCell.textContent = expandedLabel;
+      }
+    });
+  }
+
+  function findNewKeysTable() {
+    return Array.from(document.querySelectorAll("table")).find(
+      (table) => getEditorColumnIndex(table) !== -1
+    );
+  }
+
+  function splitTableIntoColumns(table) {
+    const headerRow = table.tHead?.rows[0];
+    const tableBody = table.tBodies[0];
+
+    if (!headerRow || !tableBody || tableBody.rows.length < 2) {
+      return table;
+    }
+
+    const rows = Array.from(tableBody.rows);
+    const secondTable = table.cloneNode(false);
+    const secondTableBody = tableBody.cloneNode(false);
+    const columns = document.createElement("div");
+
+    secondTable.append(table.tHead.cloneNode(true), secondTableBody);
+    rows.slice(Math.ceil(rows.length / 2)).forEach((row) => {
+      secondTableBody.append(row);
+    });
+
+    columns.className = "better-newkeys-table-columns";
+    table.parentNode.insertBefore(columns, table);
+    columns.append(table, secondTable);
+
+    return columns;
+  }
+
+  function addTableScrollContainer(content) {
+    const container = document.createElement("div");
+
+    container.className = "better-newkeys-table-scroll";
+    content.parentNode.insertBefore(container, content);
+    container.append(content);
+
+    return container;
+  }
+
+  function compareRowsByColumn(leftRow, rightRow, columnIndex, sortDirection) {
+    const leftValue = leftRow.cells[columnIndex]?.textContent.trim() ?? "";
+    const rightValue = rightRow.cells[columnIndex]?.textContent.trim() ?? "";
+
+    if (leftValue === rightValue) {
+      return 0;
+    }
+
+    if (!leftValue) {
+      return 1;
+    }
+
+    if (!rightValue) {
+      return -1;
+    }
+
+    const leftNumber = Number(leftValue);
+    const rightNumber = Number(rightValue);
+
+    if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+      return sortDirection * (leftNumber - rightNumber);
+    }
+
+    return (
+      sortDirection *
+      leftValue.localeCompare(rightValue, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      })
+    );
+  }
+
+  function addTableSorting(tableColumns) {
+    const tables = Array.from(tableColumns.querySelectorAll(":scope > table"));
+    const headers = tables.map((table) => table.tHead?.rows[0]);
+    const tableBodies = tables.map((table) => table.tBodies[0]);
+
+    if (
+      tables.length !== 2 ||
+      headers.some((header) => !header) ||
+      tableBodies.some((tableBody) => !tableBody)
     ) {
-        const form = document.createElement("form");
-        const label = document.createElement("label");
-        const input = document.createElement("input");
-        const saveButton = document.createElement("button");
-        const appearanceToggles = document.createElement("div");
-        const themeLabel = document.createElement("label");
-        const themeToggle = document.createElement("input");
-        const themeText = document.createElement("span");
-        const monospaceLabel = document.createElement("label");
-        const monospaceToggle = document.createElement("input");
-        const monospaceText = document.createElement("span");
-        const status = document.createElement("output");
-
-        form.id = CONTROL_ID;
-
-        label.htmlFor = "better-newkeys-overpass-server-input";
-        label.textContent = "Overpass Server";
-
-        input.id = "better-newkeys-overpass-server-input";
-        input.type = "text";
-        input.value = savedServer;
-        input.autocomplete = "url";
-        input.inputMode = "url";
-        input.placeholder = "https://overpass.example/api/";
-        input.spellcheck = false;
-
-        saveButton.type = "submit";
-        saveButton.textContent = "Save";
-
-        appearanceToggles.className = "better-newkeys-appearance-toggles";
-
-        themeLabel.className = "better-newkeys-appearance-toggle";
-        themeLabel.htmlFor = THEME_TOGGLE_ID;
-
-        themeToggle.id = THEME_TOGGLE_ID;
-        themeToggle.type = "checkbox";
-        themeToggle.checked = savedTheme === DARK_THEME;
-        themeToggle.setAttribute("role", "switch");
-        themeToggle.setAttribute("aria-checked", String(themeToggle.checked));
-
-        themeText.textContent = "Dark mode";
-        themeLabel.append(themeToggle, themeText);
-
-        monospaceLabel.className = "better-newkeys-appearance-toggle";
-        monospaceLabel.htmlFor = MONOSPACE_TOGGLE_ID;
-
-        monospaceToggle.id = MONOSPACE_TOGGLE_ID;
-        monospaceToggle.type = "checkbox";
-        monospaceToggle.checked = savedMonospace;
-        monospaceToggle.setAttribute("role", "switch");
-        monospaceToggle.setAttribute(
-            "aria-checked",
-            String(monospaceToggle.checked)
-        );
-
-        monospaceText.textContent = "Monospace";
-        monospaceLabel.append(monospaceToggle, monospaceText);
-
-        appearanceToggles.append(themeLabel, monospaceLabel);
-
-        status.className = "better-newkeys-status";
-        status.setAttribute("aria-live", "polite");
-
-        form.append(label, input, saveButton, appearanceToggles, status);
-        insertionPoint.parentNode.insertBefore(form, insertionPoint);
-
-        input.addEventListener("input", () => {
-            input.setCustomValidity("");
-            status.textContent = "";
-        });
-
-        themeToggle.addEventListener("change", () => {
-            const theme = themeToggle.checked ? DARK_THEME : LIGHT_THEME;
-
-            applyTheme(theme);
-            themeToggle.setAttribute(
-                "aria-checked",
-                String(themeToggle.checked)
-            );
-            GM_setValue(THEME_STORAGE_KEY, theme);
-        });
-
-        monospaceToggle.addEventListener("change", () => {
-            const monospace = monospaceToggle.checked;
-
-            applyTableFont(monospace);
-            monospaceToggle.setAttribute(
-                "aria-checked",
-                String(monospaceToggle.checked)
-            );
-            GM_setValue(MONOSPACE_STORAGE_KEY, monospace);
-        });
-
-        form.addEventListener("submit", (event) => {
-            event.preventDefault();
-
-            let server;
-
-            try {
-                server = normalizeServer(input.value);
-            } catch {
-                input.setCustomValidity("Enter a valid HTTP or HTTPS URL.");
-                input.reportValidity();
-                return;
-            }
-
-            input.setCustomValidity("");
-            input.value = server;
-            GM_setValue(STORAGE_KEY, server);
-            const { rewrittenLinkCount, skippedLevel0LinkCount } =
-                rewriteEditorLinks(editorSurface, server);
-            status.textContent = `Saved. ${rewrittenLinkCount} editor links updated.${skippedLevel0LinkCount ? ` Level0 keeps its original server because it cannot load this endpoint.` : ""}`;
-        });
+      return;
     }
 
-    function getSavedServer() {
-        try {
-            return normalizeServer(GM_getValue(STORAGE_KEY, DEFAULT_SERVER));
-        } catch {
-            return DEFAULT_SERVER;
+    let sortedColumnIndex = -1;
+    let sortDirection = 1;
+
+    headers.forEach((headerRow) => {
+      Array.from(headerRow.cells).forEach((headerCell) => {
+        if (headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)) {
+          return;
         }
-    }
 
-    function getSavedTheme() {
-        try {
-            return GM_getValue(THEME_STORAGE_KEY, DARK_THEME) === DARK_THEME
-                ? DARK_THEME
-                : LIGHT_THEME;
-        } catch {
-            return DARK_THEME;
-        }
-    }
+        headerCell.tabIndex = 0;
+        headerCell.setAttribute("aria-sort", "none");
+        headerCell.title = `Sort by ${headerCell.textContent.trim()}`;
+      });
+    });
 
-    function getSavedMonospace() {
-        try {
-            return (
-                GM_getValue(MONOSPACE_STORAGE_KEY, DEFAULT_MONOSPACE) === true
-            );
-        } catch {
-            return DEFAULT_MONOSPACE;
-        }
-    }
+    function sortRows(headerCell) {
+      const columnIndex = Array.from(headerCell.parentElement.cells).indexOf(
+        headerCell
+      );
 
-    function applyTheme(theme) {
-        document.documentElement.dataset.betterNewkeysTheme = theme;
-    }
+      sortDirection = columnIndex === sortedColumnIndex ? -sortDirection : 1;
+      sortedColumnIndex = columnIndex;
 
-    function applyTableFont(monospace) {
-        document.documentElement.dataset.betterNewkeysTableFont = monospace
-            ? MONOSPACE_FONT
-            : NEXT_FONT;
-    }
+      const rows = tables.flatMap((table) => Array.from(table.tBodies[0].rows));
+      rows.sort((leftRow, rightRow) =>
+        compareRowsByColumn(leftRow, rightRow, columnIndex, sortDirection)
+      );
 
-    function getAddressedKeys() {
-        try {
-            const addressedKeys = GM_getValue(ADDRESSED_KEYS_STORAGE_KEY, []);
+      const firstColumnRowCount = Math.ceil(rows.length / 2);
+      rows.forEach((row, index) => {
+        tableBodies[index < firstColumnRowCount ? 0 : 1].append(row);
+      });
 
-            return new Set(
-                Array.isArray(addressedKeys)
-                    ? addressedKeys.filter(
-                          (addressedKey) => typeof addressedKey === "string"
-                      )
-                    : []
-            );
-        } catch {
-            return new Set();
-        }
-    }
-
-    function saveAddressedKeys(addressedKeys) {
-        GM_setValue(
-            ADDRESSED_KEYS_STORAGE_KEY,
-            Array.from(addressedKeys).sort()
-        );
-    }
-
-    function addAddressedCheckboxes(table, addressedKeys) {
-        const headerRow = table.tHead?.rows[0];
-        const tableBody = table.tBodies[0];
-
-        if (!headerRow || !tableBody) {
+      headers.forEach((headerRow) => {
+        Array.from(headerRow.cells).forEach((tableHeaderCell, index) => {
+          if (tableHeaderCell.classList.contains(ADDRESSED_COLUMN_CLASS)) {
             return;
-        }
+          }
 
-        const headerCell = document.createElement("th");
-
-        headerCell.className = ADDRESSED_COLUMN_CLASS;
-        headerCell.scope = "col";
-        headerCell.title = "Addressed";
-        headerCell.setAttribute("aria-label", "Addressed");
-        headerRow.insertBefore(headerCell, headerRow.firstChild);
-
-        Array.from(tableBody.rows).forEach((row) => {
-            const keyCell = row.cells[0];
-            const key = keyCell?.textContent.trim();
-
-            if (!key) {
-                return;
-            }
-
-            const cell = document.createElement("td");
-            const checkbox = document.createElement("input");
-
-            cell.className = ADDRESSED_COLUMN_CLASS;
-            checkbox.type = "checkbox";
-            checkbox.checked = addressedKeys.has(key);
-            checkbox.setAttribute("aria-label", `Mark ${key} as addressed`);
-
-            if (!keyCell.title) {
-                keyCell.title = key;
-            }
-
-            cell.append(checkbox);
-            row.insertBefore(cell, row.firstChild);
-
-            checkbox.addEventListener("change", () => {
-                if (checkbox.checked) {
-                    addressedKeys.add(key);
-                } else {
-                    addressedKeys.delete(key);
-                }
-
-                saveAddressedKeys(addressedKeys);
-            });
+          tableHeaderCell.setAttribute(
+            "aria-sort",
+            index === sortedColumnIndex
+              ? sortDirection === 1
+                ? "ascending"
+                : "descending"
+              : "none"
+          );
         });
+      });
     }
 
-    function fixTableHeaders(table) {
-        const headerRow = table.tHead?.rows[0];
-
-        if (!headerRow) {
-            return;
-        }
-
-        const expandedLabels = new Map([
-            ["FirstSeen", "First Seen"],
-            ["LastSeen", "Last Seen"],
-        ]);
-
-        Array.from(headerRow.cells).forEach((headerCell) => {
-            const expandedLabel = expandedLabels.get(
-                headerCell.textContent.trim()
-            );
-
-            if (expandedLabel) {
-                headerCell.textContent = expandedLabel;
-            }
-        });
-    }
-
-    function findNewKeysTable() {
-        return Array.from(document.querySelectorAll("table")).find(
-            (table) => getEditorColumnIndex(table) !== -1
-        );
-    }
-
-    function splitTableIntoColumns(table) {
-        const headerRow = table.tHead?.rows[0];
-        const tableBody = table.tBodies[0];
-
-        if (!headerRow || !tableBody || tableBody.rows.length < 2) {
-            return table;
-        }
-
-        const rows = Array.from(tableBody.rows);
-        const secondTable = table.cloneNode(false);
-        const secondTableBody = tableBody.cloneNode(false);
-        const columns = document.createElement("div");
-
-        secondTable.append(table.tHead.cloneNode(true), secondTableBody);
-        rows.slice(Math.ceil(rows.length / 2)).forEach((row) => {
-            secondTableBody.append(row);
-        });
-
-        columns.className = "better-newkeys-table-columns";
-        table.parentNode.insertBefore(columns, table);
-        columns.append(table, secondTable);
-
-        return columns;
-    }
-
-    function addTableScrollContainer(content) {
-        const container = document.createElement("div");
-
-        container.className = "better-newkeys-table-scroll";
-        content.parentNode.insertBefore(container, content);
-        container.append(content);
-
-        return container;
-    }
-
-    function compareRowsByColumn(
-        leftRow,
-        rightRow,
-        columnIndex,
-        sortDirection
-    ) {
-        const leftValue = leftRow.cells[columnIndex]?.textContent.trim() ?? "";
-        const rightValue =
-            rightRow.cells[columnIndex]?.textContent.trim() ?? "";
-
-        if (leftValue === rightValue) {
-            return 0;
-        }
-
-        if (!leftValue) {
-            return 1;
-        }
-
-        if (!rightValue) {
-            return -1;
-        }
-
-        const leftNumber = Number(leftValue);
-        const rightNumber = Number(rightValue);
-
-        if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
-            return sortDirection * (leftNumber - rightNumber);
-        }
-
-        return (
-            sortDirection *
-            leftValue.localeCompare(rightValue, undefined, {
-                numeric: true,
-                sensitivity: "base",
-            })
-        );
-    }
-
-    function addTableSorting(tableColumns) {
-        const tables = Array.from(
-            tableColumns.querySelectorAll(":scope > table")
-        );
-        const headers = tables.map((table) => table.tHead?.rows[0]);
-        const tableBodies = tables.map((table) => table.tBodies[0]);
+    tableColumns.addEventListener(
+      "click",
+      (event) => {
+        const headerCell = event.target.closest("thead th, thead td");
 
         if (
-            tables.length !== 2 ||
-            headers.some((header) => !header) ||
-            tableBodies.some((tableBody) => !tableBody)
+          !headerCell ||
+          !tableColumns.contains(headerCell) ||
+          headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)
         ) {
-            return;
+          return;
         }
 
-        let sortedColumnIndex = -1;
-        let sortDirection = 1;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        sortRows(headerCell);
+      },
+      true
+    );
 
-        headers.forEach((headerRow) => {
-            Array.from(headerRow.cells).forEach((headerCell) => {
-                if (headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)) {
-                    return;
-                }
+    tableColumns.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") {
+        return;
+      }
 
-                headerCell.tabIndex = 0;
-                headerCell.setAttribute("aria-sort", "none");
-                headerCell.title = `Sort by ${headerCell.textContent.trim()}`;
-            });
-        });
+      const headerCell = event.target.closest("thead th, thead td");
 
-        function sortRows(headerCell) {
-            const columnIndex = Array.from(
-                headerCell.parentElement.cells
-            ).indexOf(headerCell);
+      if (
+        !headerCell ||
+        !tableColumns.contains(headerCell) ||
+        headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)
+      ) {
+        return;
+      }
 
-            sortDirection =
-                columnIndex === sortedColumnIndex ? -sortDirection : 1;
-            sortedColumnIndex = columnIndex;
+      event.preventDefault();
+      sortRows(headerCell);
+    });
+  }
 
-            const rows = tables.flatMap((table) =>
-                Array.from(table.tBodies[0].rows)
-            );
-            rows.sort((leftRow, rightRow) =>
-                compareRowsByColumn(
-                    leftRow,
-                    rightRow,
-                    columnIndex,
-                    sortDirection
-                )
-            );
+  function addCredits(insertionPoint) {
+    const credits = document.createElement("footer");
+    const originalSite = document.createElement("a");
+    const updateSite = document.createElement("a");
 
-            const firstColumnRowCount = Math.ceil(rows.length / 2);
-            rows.forEach((row, index) => {
-                tableBodies[index < firstColumnRowCount ? 0 : 1].append(row);
-            });
+    credits.id = CREDITS_ID;
 
-            headers.forEach((headerRow) => {
-                Array.from(headerRow.cells).forEach(
-                    (tableHeaderCell, index) => {
-                        if (
-                            tableHeaderCell.classList.contains(
-                                ADDRESSED_COLUMN_CLASS
-                            )
-                        ) {
-                            return;
-                        }
+    originalSite.href = "https://osm.janmichel.eu/";
+    originalSite.textContent = "osm.janmichel.eu";
+    originalSite.target = "_blank";
+    originalSite.rel = "noopener noreferrer";
 
-                        tableHeaderCell.setAttribute(
-                            "aria-sort",
-                            index === sortedColumnIndex
-                                ? sortDirection === 1
-                                    ? "ascending"
-                                    : "descending"
-                                : "none"
-                        );
-                    }
-                );
-            });
-        }
+    updateSite.href = "https://lumikeiju.dev/";
+    updateSite.textContent = "lumikeiju.dev";
+    updateSite.target = "_blank";
+    updateSite.rel = "noopener noreferrer";
 
-        tableColumns.addEventListener(
-            "click",
-            (event) => {
-                const headerCell = event.target.closest("thead th, thead td");
+    credits.append(
+      "Created by: Jan Michel - ",
+      originalSite,
+      " • BetterNewTags: Lumikeiju - ",
+      updateSite
+    );
+    insertionPoint.after(credits);
+  }
 
-                if (
-                    !headerCell ||
-                    !tableColumns.contains(headerCell) ||
-                    headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)
-                ) {
-                    return;
-                }
-
-                event.preventDefault();
-                event.stopImmediatePropagation();
-                sortRows(headerCell);
-            },
-            true
-        );
-
-        tableColumns.addEventListener("keydown", (event) => {
-            if (event.key !== "Enter" && event.key !== " ") {
-                return;
-            }
-
-            const headerCell = event.target.closest("thead th, thead td");
-
-            if (
-                !headerCell ||
-                !tableColumns.contains(headerCell) ||
-                headerCell.classList.contains(ADDRESSED_COLUMN_CLASS)
-            ) {
-                return;
-            }
-
-            event.preventDefault();
-            sortRows(headerCell);
-        });
-    }
-
-    function addCredits(insertionPoint) {
-        const credits = document.createElement("footer");
-        const originalSite = document.createElement("a");
-        const updateSite = document.createElement("a");
-
-        credits.id = CREDITS_ID;
-
-        originalSite.href = "https://osm.janmichel.eu/";
-        originalSite.textContent = "osm.janmichel.eu";
-        originalSite.target = "_blank";
-        originalSite.rel = "noopener noreferrer";
-
-        updateSite.href = "https://lumikeiju.dev/";
-        updateSite.textContent = "lumikeiju.dev";
-        updateSite.target = "_blank";
-        updateSite.rel = "noopener noreferrer";
-
-        credits.append(
-            "Created by: Jan Michel - ",
-            originalSite,
-            " • BetterNewTags: Lumikeiju - ",
-            updateSite
-        );
-        insertionPoint.after(credits);
-    }
-
-    function addStyles() {
-        GM_addStyle(`
+  function addStyles() {
+    GM_addStyle(`
             @import url("https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible+Mono:wght@400;500;600;700&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap");
 
             :root {
@@ -1282,33 +1238,33 @@
                 }
             }
         `);
-    }
+  }
 
-    const table = findNewKeysTable();
+  const table = findNewKeysTable();
 
-    if (!table || document.getElementById(CONTROL_ID)) {
-        return;
-    }
+  if (!table || document.getElementById(CONTROL_ID)) {
+    return;
+  }
 
-    const savedServer = getSavedServer();
-    const savedTheme = getSavedTheme();
-    const savedMonospace = getSavedMonospace();
-    const addressedKeys = getAddressedKeys();
-    applyTheme(savedTheme);
-    applyTableFont(savedMonospace);
-    addStyles();
-    fixTableHeaders(table);
-    addAddressedCheckboxes(table, addressedKeys);
-    const tableColumns = splitTableIntoColumns(table);
-    const tableContainer = addTableScrollContainer(tableColumns);
-    addTableSorting(tableColumns);
-    addServerControl(
-        tableContainer,
-        savedServer,
-        savedTheme,
-        savedMonospace,
-        tableContainer
-    );
-    rewriteEditorLinks(tableContainer, savedServer);
-    addCredits(tableContainer);
+  const savedServer = getSavedServer();
+  const savedTheme = getSavedTheme();
+  const savedMonospace = getSavedMonospace();
+  const addressedKeys = getAddressedKeys();
+  applyTheme(savedTheme);
+  applyTableFont(savedMonospace);
+  addStyles();
+  fixTableHeaders(table);
+  addAddressedCheckboxes(table, addressedKeys);
+  const tableColumns = splitTableIntoColumns(table);
+  const tableContainer = addTableScrollContainer(tableColumns);
+  addTableSorting(tableColumns);
+  addServerControl(
+    tableContainer,
+    savedServer,
+    savedTheme,
+    savedMonospace,
+    tableContainer
+  );
+  rewriteEditorLinks(tableContainer, savedServer);
+  addCredits(tableContainer);
 })();
